@@ -1,0 +1,12 @@
+{
+ :paths ["src" "classes"]
+ :deps  {org.clojure/clojure {:mvn/version "1.11.0-alpha2"}}
+
+ :aliases
+ {
+  :bench {:exec-fn bench-update-kvs.core/bench}
+ }
+
+ :mvn/repos {"central" {:url "https://repo1.maven.org/maven2/"}
+             "clojars" {:url "https://repo.clojars.org/"}}
+}
