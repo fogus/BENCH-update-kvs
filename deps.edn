@@ -1,6 +1,9 @@
 {
  :paths ["src" "classes"]
- :deps  {org.clojure/clojure {:mvn/version "1.11.0-alpha2"}}
+ :deps  {org.clojure/clojure {:mvn/version "1.11.0-alpha2"}
+         org.clojure/data.priority-map {:mvn/version "1.0.0"}
+         org.clojure/data.int-map {:mvn/version "1.0.0"}
+         org.clojure/data.avl {:mvn/version "0.1.0"}}
 
  :aliases
  {

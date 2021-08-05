@@ -1,4 +1,7 @@
-(ns bench-update-kvs.core)
+(ns bench-update-kvs.core
+  (:require clojure.data.priority-map
+            clojure.data.int-map
+            clojure.data.avl))
 
 (defn pretty-float5 [anum]
   (format "%.5g" anum))
@@ -28,9 +31,9 @@
 
 (defn compare-benchmark [amt-per-iter afn-map]
   (let [results (update-vals0
-                  (fn [afn]
-                    (average-time-ms 8 amt-per-iter afn))
-                  afn-map)
+                 afn-map
+                 (fn [afn]
+                   (average-time-ms 8 amt-per-iter afn)))
         [[_ best-time] & _ :as sorted] (sort-by last results)
         ]
     (println "\nAvg(ms)\t\tvs best\t\tCode")
@@ -51,46 +54,54 @@
   (println "Benchmarking with " iterations "iterations.")
   (println "  Clojure version " *clojure-version*)
 
-  (let [data {0 1 2 3 4 5 6 7}
-        size 1000]
-      (run-benchmark "transform keys/vals of a small map" iterations
-                     (update-keys0  inc data)
-                     (update-vals0  inc data)
-                     (update-keys-rkv inc data)
-                     (update-vals-rkv inc data)
-                     (update-keys-itr inc data)
-                     (update-vals-itr inc data)
-                     (update-keys-trns inc data)
-                     (update-vals-trns inc data))
+  (let [size-sm 10
+        size-md 100
+        size-lg 1000]
+    (let [data (->> (for [i (range size-sm)] [i i]) (into {}))]
+      (run-benchmark (str "transform keys of a map (" (count data) " keys)") iterations
+                     (update-keys0  data inc)
+                     (update-keys-red data inc)
+                     (update-keys-trns data inc)))
+    
+    (let [data (->> (for [i (range size-sm)] [i i]) (into {}))]
+      (run-benchmark (str "transform vals of a map (" (count data) " keys)") iterations
+                     (update-vals0  data inc)
+                     (update-vals-rkv data inc)
+                     (update-vals-red data inc)
+                     (update-vals-trns data inc)))
 
-      (let [data (->> (for [i (range size)] [i i]) (into {}))]
-        (run-benchmark "transform values of large map" (/ iterations size)
-                       (update-keys0  inc data)
-                       (update-vals0  inc data)
-                       (update-keys-rkv inc data)
-                       (update-vals-rkv inc data)
-                       (update-keys-itr inc data)
-                       (update-vals-itr inc data)
-                       (update-keys-trns inc data)
-                       (update-vals-trns inc data))))
-  (doseq [fun '[update-keys0 update-vals0 update-keys-rkv update-vals-rkv update-keys-itr update-vals-itr update-keys-trns update-vals-trns]
-          m    [(hash-map 0 1 2 3) (array-map 0 1 2 3) (sorted-map 2 3 0 1)]]
-    (let [f (resolve fun)
-          r (f inc m)]
-      (if (= (type m) (type r))
-        (println fun " preserves type " (type r))
-        (println fun " CHANGES type " (type m) " TO " (type r)))))
-)
+    (let [data (->> (for [i (range size-md)] [i i]) (into {}))]
+      (run-benchmark (str "transform keys of a map (" (count data) " keys)") (/ iterations size-md)
+                     (update-keys0  data inc)
+                     (update-keys-red data inc)
+                     (update-keys-trns data inc)))
 
-(comment
-  (type (first (sorted-map 2 3 0 1)))
+    (let [data (->> (for [i (range size-md)] [i i]) (into {}))]
+      (run-benchmark (str "transform vals of a map (" (count data) " keys)") (/ iterations size-md)
+                     (update-vals0  data inc)
+                     (update-vals-red data inc)
+                     (update-vals-rkv data inc)
+                     (update-vals-trns data inc)))
+
+    (let [data (->> (for [i (range size-lg)] [i i]) (into {}))]
+      (run-benchmark (str "transform keys of a map (" (count data) " keys)") (/ iterations size-lg)
+                     (update-keys0  data inc)
+                     (update-keys-red data inc)
+                     (update-keys-trns data inc)))
+
+    (let [data (->> (for [i (range size-lg)] [i i]) (into {}))]
+      (run-benchmark (str "transform vals of a map (" (count data) " keys)") (/ iterations size-lg)
+                     (update-vals0  data inc)
+                     (update-vals-red data inc)
+                     (update-vals-rkv data inc)
+                     (update-vals-trns data inc))))
   
-  (update-keys0 name {:a 1 :b 2})
-  (update-vals0 inc {:a 1 :b 2})
-  (update-keys1 name {:a 1 :b 2})
-  (update-vals1 inc {:a 1 :b 2})
-  (update-keys2 name {:a 1 :b 2})
-  (update-vals2 inc {:a 1 :b 2})
-  (update-keys3 name {:a 1 :b 2})
-  (update-vals3 inc {:a 1 :b 2})
-)
+  (doseq [fun '[update-keys0 update-vals0 update-keys-red update-vals-red update-vals-rkv update-keys-trns update-vals-trns]
+          m    [(hash-map 0 1 2 3) (array-map 0 1 2 3) (sorted-map 2 3 0 1)
+                (clojure.data.priority-map/priority-map 0 1 2 3)
+                (clojure.data.int-map/int-map (int 0) (int 1) (int 2) (int 3))
+                (clojure.data.avl/sorted-map 0 1 2 3)]]
+    (println "Checking type " (type m) " against " fun)
+    (let [f (resolve fun)]
+      (f m inc))))
+
