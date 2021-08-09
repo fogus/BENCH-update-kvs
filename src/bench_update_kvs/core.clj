@@ -31,7 +31,7 @@
     (meta m)))
 
 (defn update-keys-red
-  "Transient, reduce Map.Entry version"
+  "reduce Map.Entry version"
   {:added "1.11"}
   [m f]
   (let [ret (into (with-meta {} (meta m))
@@ -44,7 +44,7 @@
       (throw (RuntimeException. "Key transform function did not return unique values.")))))
 
 (defn update-vals-red
-  "Transient, reduce Map.Entry version"
+  "reduce Map.Entry version"
   {:added "1.11"}
   [m f]
   (into (with-meta {} (meta m))
