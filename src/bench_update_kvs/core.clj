@@ -31,7 +31,7 @@
     (meta m)))
 
 (defn update-keys-red
-  "reduce, assumes seq of Map.Entry"
+  "reduce, assumes seq of Map.Entry, builds [[k v]...] as input to into"
   {:added "1.11"}
   [m f]
   (let [ret (into (with-meta {} (meta m))
@@ -44,17 +44,18 @@
       (throw (RuntimeException. "Key transform function did not return unique values.")))))
 
 (defn update-vals-red
-  "reduce, assumes seq of Map.Entry"
+  "reduce, assumes seq of Map.Entry, calls out to update"
   {:added "1.11"}
   [m f]
-  (into (with-meta {} (meta m))
+  (with-meta 
    (reduce
     (fn [acc ^java.util.Map$Entry me] (update acc (.getKey me) f))
     m
-    m)))
+    m)
+    (meta m)))
 
 (defn update-keys-rkv
-  "reduce-kv"
+  "reduce-kv, builds [[k v]...] as input to into"
   {:added "1.11"}
   [m f]
   (into (with-meta {} (meta m))
@@ -63,7 +64,7 @@
                    m)))
 
 (defn update-vals-rkv
-  "reduce-kv"
+  "reduce-kv calls out to update"
   {:added "1.11"}
   [m f]
   (reduce-kv (fn [acc k _] (update acc k f))
@@ -71,7 +72,7 @@
              m))
 
 (defn update-keys-trns
-  "Transducer version"
+  "Transducer version, builds [[k v]...] as input to into"
   {:added "1.11"}
   [m f]
     (let [ret (into (with-meta {} (meta m))
@@ -82,7 +83,7 @@
       (throw (RuntimeException. "Key transform function did not return unique values.")))))
 
 (defn update-vals-trns
-  "Transducer version"
+  "Transducer version, builds [[k v]...] as input to into"
   {:added "1.11"}
   [m f]
   (into (with-meta {} (meta m))
@@ -99,8 +100,7 @@
   (format "%.3g" anum))
 
 (defn time-ms [amt afn]
-  (let [_ (dotimes [_ (/ amt 2)] (afn))
-        start (System/nanoTime)
+  (let [start (System/nanoTime)
         _ (dotimes [_ amt] (afn))
         end (System/nanoTime)]
   (/ (- end start) 1000000.0)
@@ -118,11 +118,13 @@
       (for [i (range (inc iters))]
         (time-ms amt-per-iter afn)))))
 
+(def ^:dynamic *TIMES* 8)
+
 (defn compare-benchmark [amt-per-iter afn-map]
   (let [results (update-vals-naive
                  afn-map
                  (fn [afn]
-                   (average-time-ms 8 amt-per-iter afn)))
+                   (average-time-ms *TIMES* amt-per-iter afn)))
         [[_ best-time] & _ :as sorted] (sort-by last results)
         ]
     (println "\nAvg(ms)\t\tvs best\t\tCode")
@@ -133,14 +135,13 @@
 (defmacro run-benchmark [name amt-per-iter & exprs]
   (let [afn-map (->> exprs shuffle (map (fn [e] [`(quote ~e) `(fn [] ~e)])) (into {}))]
     `(do
-       (println "Benchmark:" ~name (str "(" ~amt-per-iter " iterations, with half that amount warmup)"))
+       (println "Benchmark:" ~name (str "(" (* *TIMES* ~amt-per-iter) " iterations with " ~amt-per-iter " warmup)"))
        (compare-benchmark ~amt-per-iter ~afn-map)
        (println "\n********************************\n")
        )))
 
 (defn bench
   [{:keys [iterations] :as opts :or {iterations 1000000}}]
-  (println "Benchmarking with " iterations "iterations.")
   (println "  Clojure version " *clojure-version*)
 
   (let [size-sm 10
@@ -161,26 +162,28 @@
                      (update-vals-trns data inc)))
 
     (let [data (->> (for [i (range size-md)] [i i]) (into {}))]
-      (run-benchmark (str "transform keys of a map (" (count data) " keys)") (/ iterations size-md)
+      (run-benchmark (str "transform keys of a map (" (count data) " keys)") (/ iterations size-sm)
                      (update-keys-naive  data inc)
                      (update-keys-red data inc)
+                     (update-keys-rkv data inc)
                      (update-keys-trns data inc)))
 
     (let [data (->> (for [i (range size-md)] [i i]) (into {}))]
-      (run-benchmark (str "transform vals of a map (" (count data) " keys)") (/ iterations size-md)
+      (run-benchmark (str "transform vals of a map (" (count data) " keys)") (/ iterations size-sm)
                      (update-vals-naive  data inc)
                      (update-vals-red data inc)
                      (update-vals-rkv data inc)
                      (update-vals-trns data inc)))
 
     (let [data (->> (for [i (range size-lg)] [i i]) (into {}))]
-      (run-benchmark (str "transform keys of a map (" (count data) " keys)") (/ iterations size-lg)
+      (run-benchmark (str "transform keys of a map (" (count data) " keys)") (/ iterations size-md)
                      (update-keys-naive  data inc)
                      (update-keys-red data inc)
+                     (update-keys-rkv data inc)
                      (update-keys-trns data inc)))
 
     (let [data (->> (for [i (range size-lg)] [i i]) (into {}))]
-      (run-benchmark (str "transform vals of a map (" (count data) " keys)") (/ iterations size-lg)
+      (run-benchmark (str "transform vals of a map (" (count data) " keys)") (/ iterations size-md)
                      (update-vals-naive  data inc)
                      (update-vals-red data inc)
                      (update-vals-rkv data inc)
