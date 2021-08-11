@@ -4,8 +4,8 @@
 
 (deftest test-update-kvs
   (let [inm  (with-meta {:a 1 :b 2} {:has :meta})
-        kfns '[update-keys-naive update-keys-red update-keys-rkv update-keys-trns]
-        vfns '[update-vals-naive update-vals-red update-vals-rkv update-vals-trns]]
+        kfns '[update-keys-naive update-keys-red update-keys-rkv update-keys-rkv! update-keys-trns]
+        vfns '[update-vals-naive update-vals-red update-vals-rkv update-vals-rkv! update-vals-trns]]
     (doseq [uk kfns
             uv vfns]
       (let [update-keys (ns-resolve (find-ns 'bench-update-kvs.core) uk)

@@ -3,19 +3,6 @@
             clojure.data.int-map
             clojure.data.avl))
 
-(defn reduce-kv2
-  "Reduces an associative collection. f should be a function of 3
-  arguments. Returns the result of applying f to init, the first key
-  and the first value in coll, then applying f to that result and the
-  2nd key and value, etc. If coll contains no entries, returns init
-  and f is not called. Note that reduce-kv is supported on vectors,
-  where the keys will be the ordinals."  
-  {:added "1.4"}
-  ([f init coll]
-   (if (instance? clojure.lang.IKVReduce coll)
-     (.kvreduce coll f init)
-     (clojure.core.protocols/kv-reduce coll f init))))
-
 (defn update-keys-naive
   "m f => {(f k) v ...}
 
@@ -47,11 +34,10 @@
   "reduce, assumes seq of Map.Entry, builds [[k v]...] as input to into"
   {:added "1.11"}
   [m f]
-  (let [ret (into (with-meta {} (meta m))
-                  (reduce
-                   (fn [acc ^java.util.Map$Entry me] (conj acc [(f (.getKey me)) (.getValue me)]))
-                   []
-                   m))]
+  (let [ret (reduce
+             (fn [acc ^java.util.Map$Entry me] (assoc acc (f (.getKey me)) (.getValue me)))
+             (with-meta {} (meta m))
+             m)]
     (if (= (count m) (count ret))
       ret
       (throw (RuntimeException. "Key transform function did not return unique values.")))))
@@ -62,7 +48,7 @@
   [m f]
   (with-meta 
    (reduce
-    (fn [acc ^java.util.Map$Entry me] (update acc (.getKey me) f))
+    (fn [acc ^java.util.Map$Entry me] (assoc acc (.getKey me) (f (.getValue me))))
     m
     m)
     (meta m)))
@@ -71,10 +57,9 @@
   "reduce-kv, builds [[k v]...] as input to into"
   {:added "1.11"}
   [m f]
-  (let [ret (into (with-meta {} (meta m))
-                  (reduce-kv (fn [acc k v] (conj acc [(f k) v]))
-                             []
-                             m))]
+  (let [ret (reduce-kv (fn [acc k v] (assoc acc (f k) v))
+                       (with-meta {} (meta m))
+                       m)]
     (if (= (count m) (count ret))
       ret
       (throw (RuntimeException. "Key transform function did not return unique values.")))))
@@ -83,9 +68,47 @@
   "reduce-kv calls out to update"
   {:added "1.11"}
   [m f]
-  (reduce-kv (fn [acc k _] (update acc k f))
-             m
+  (reduce-kv (fn [acc k v] (assoc acc k (f v)))
+             (with-meta {} (meta m))
              m))
+
+(defn update-keys-rkv!
+  "reduce-kv, with transient"
+  {:added "1.11"}
+  [m f]
+  (let [ret (persistent!
+             (reduce-kv (fn [acc k v] (assoc! acc (f k) v))
+                        (transient {})
+                        m))]
+    (if (= (count m) (count ret))
+      (with-meta ret (meta m))
+      (throw (RuntimeException. "Key transform function did not return unique values.")))))
+
+(defn update-vals-rkv!
+  "reduce-kv with transient"
+  {:added "1.11"}
+  [m f]
+  (with-meta
+    (persistent!
+     (reduce-kv (fn [acc k v] (assoc! acc k (f v)))
+                (transient {})
+                m))
+    (meta m)))
+
+;;;
+
+(defn reduce-kv2
+  "Reduces an associative collection. f should be a function of 3
+  arguments. Returns the result of applying f to init, the first key
+  and the first value in coll, then applying f to that result and the
+  2nd key and value, etc. If coll contains no entries, returns init
+  and f is not called. Note that reduce-kv is supported on vectors,
+  where the keys will be the ordinals."  
+  {:added "1.4"}
+  ([f init coll]
+   (if (instance? clojure.lang.IKVReduce coll)
+     (.kvreduce coll f init)
+     (clojure.core.protocols/kv-reduce coll f init))))
 
 (defn update-keys-rkv2
   "reduce-kv, builds [[k v]...] as input to into"
@@ -185,6 +208,7 @@
                      (update-keys-naive  data inc)
                      (update-keys-red data inc)
                      (update-keys-rkv data inc)
+                     (update-keys-rkv! data inc)
                      (update-keys-rkv2 data inc)
                      (update-keys-trns data inc)))
     
@@ -192,6 +216,7 @@
       (run-benchmark (str "transform vals of a map (" (count data) " keys)") iterations
                      (update-vals-naive  data inc)
                      (update-vals-rkv data inc)
+                     (update-vals-rkv! data inc)
                      (update-vals-rkv2 data inc)
                      (update-vals-red data inc)
                      (update-vals-trns data inc)))
@@ -201,6 +226,7 @@
                      (update-keys-naive  data inc)
                      (update-keys-red data inc)
                      (update-keys-rkv data inc)
+                     (update-keys-rkv! data inc)
                      (update-keys-rkv2 data inc)
                      (update-keys-trns data inc)))
 
@@ -209,6 +235,7 @@
                      (update-vals-naive  data inc)
                      (update-vals-red data inc)
                      (update-vals-rkv data inc)
+                     (update-vals-rkv! data inc)
                      (update-vals-rkv2 data inc)
                      (update-vals-trns data inc)))
 
@@ -217,6 +244,7 @@
                      (update-keys-naive  data inc)
                      (update-keys-red data inc)
                      (update-keys-rkv data inc)
+                     (update-keys-rkv! data inc)
                      (update-keys-rkv2 data inc)
                      (update-keys-trns data inc)))
 
@@ -225,10 +253,12 @@
                      (update-vals-naive  data inc)
                      (update-vals-red data inc)
                      (update-vals-rkv data inc)
+                     (update-vals-rkv! data inc)
                      (update-vals-rkv2 data inc)
                      (update-vals-trns data inc))))
   
-  (doseq [fun [update-keys-naive update-vals-naive update-keys-red update-vals-red update-keys-rkv update-vals-rkv update-keys-rkv2 update-vals-rkv2 update-keys-trns update-vals-trns]
+  (doseq [fun [update-keys-naive update-vals-naive update-keys-red update-vals-red update-keys-rkv update-keys-rkv!
+               update-vals-rkv update-vals-rkv! update-keys-rkv2 update-vals-rkv2 update-keys-trns update-vals-trns]
           m    [(hash-map 0 1 2 3) (array-map 0 1 2 3) (sorted-map 2 3 0 1)
                 (clojure.data.priority-map/priority-map 0 1 2 3)
                 (clojure.data.int-map/int-map (int 0) (int 1) (int 2) (int 3))
