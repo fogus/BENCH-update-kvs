@@ -31,7 +31,7 @@
     (meta m)))
 
 (defn update-keys-red
-  "reduce, assumes seq of Map.Entry, builds [[k v]...] as input to into"
+  "reduce, assumes seq of Map.Entry, assoc to {}"
   {:added "1.11"}
   [m f]
   (let [ret (reduce
@@ -43,18 +43,16 @@
       (throw (RuntimeException. "Key transform function did not return unique values.")))))
 
 (defn update-vals-red
-  "reduce, assumes seq of Map.Entry, calls out to update"
+  "reduce, assumes seq of Map.Entry, assoc to {}"
   {:added "1.11"}
   [m f]
-  (with-meta 
-   (reduce
-    (fn [acc ^java.util.Map$Entry me] (assoc acc (.getKey me) (f (.getValue me))))
-    m
-    m)
-    (meta m)))
+  (reduce
+   (fn [acc ^java.util.Map$Entry me] (assoc acc (.getKey me) (f (.getValue me))))
+   (with-meta {} (meta m))
+   m))
 
 (defn update-keys-rkv
-  "reduce-kv, builds [[k v]...] as input to into"
+  "reduce-kv, assoc to {}"
   {:added "1.11"}
   [m f]
   (let [ret (reduce-kv (fn [acc k v] (assoc acc (f k) v))
@@ -65,7 +63,7 @@
       (throw (RuntimeException. "Key transform function did not return unique values.")))))
 
 (defn update-vals-rkv
-  "reduce-kv calls out to update"
+  "reduce-kv, assoc to {}"
   {:added "1.11"}
   [m f]
   (reduce-kv (fn [acc k v] (assoc acc k (f v)))
@@ -73,7 +71,7 @@
              m))
 
 (defn update-keys-rkv!
-  "reduce-kv, with transient"
+  "reduce-kv, assoc! to transient"
   {:added "1.11"}
   [m f]
   (let [ret (persistent!
@@ -85,7 +83,7 @@
       (throw (RuntimeException. "Key transform function did not return unique values.")))))
 
 (defn update-vals-rkv!
-  "reduce-kv with transient"
+  "reduce-kv, assoc! to transient!"
   {:added "1.11"}
   [m f]
   (with-meta
@@ -111,19 +109,18 @@
      (clojure.core.protocols/kv-reduce coll f init))))
 
 (defn update-keys-rkv2
-  "reduce-kv, builds [[k v]...] as input to into"
+  "reduce-kv2, assoc to {}"
   {:added "1.11"}
   [m f]
-  (into (with-meta {} (meta m))
-        (reduce-kv2 (fn [acc k v] (conj acc [(f k) v]))
-                    []
-                    m)))
+  (reduce-kv2 (fn [acc k v] (assoc acc (f k) v))
+              (with-meta {} (meta m))
+              m))
 
 (defn update-vals-rkv2
-  "reduce-kv calls out to update"
+  "reduce-kv2, assoc to {}"
   {:added "1.11"}
   [m f]
-  (reduce-kv2 (fn [acc k _] (update acc k f))
+  (reduce-kv2 (fn [acc k v] (assoc acc k (f v)))
               m
               m))
 
