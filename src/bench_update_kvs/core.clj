@@ -95,6 +95,8 @@
 
 ;;;
 
+(set! *warn-on-reflection* true)
+
 (defn reduce-kv2
   "Reduces an associative collection. f should be a function of 3
   arguments. Returns the result of applying f to init, the first key
@@ -105,7 +107,7 @@
   {:added "1.4"}
   ([f init coll]
    (if (instance? clojure.lang.IKVReduce coll)
-     (.kvreduce coll f init)
+     (.kvreduce ^clojure.lang.IKVReduce coll f init)
      (clojure.core.protocols/kv-reduce coll f init))))
 
 (defn update-keys-rkv2
@@ -123,6 +125,29 @@
   (reduce-kv2 (fn [acc k v] (assoc acc k (f v)))
               m
               m))
+
+(defn update-keys-rkv2!
+  "reduce-kv2, assoc to {}"
+  {:added "1.11"}
+  [m f]
+  (let [ret (persistent!
+             (reduce-kv2 (fn [acc k v] (assoc! acc (f k) v))
+                         (transient {})
+                         m))]
+    (if (= (count m) (count ret))
+      (with-meta ret (meta m))
+      (throw (RuntimeException. "Key transform function did not return unique values.")))))
+
+(defn update-vals-rkv2!
+  "reduce-kv2, assoc to {}"
+  {:added "1.11"}
+  [m f]
+  (with-meta
+    (persistent!
+     (reduce-kv2 (fn [acc k v] (assoc! acc k (f v)))
+                 (transient {})
+                 m))
+    (meta m)))
 
 (defn update-keys-trns
   "Transducer version, builds [[k v]...] as input to into"
@@ -202,60 +227,54 @@
         size-lg 1000]
     (let [data (->> (for [i (range size-sm)] [i i]) (into {}))]
       (run-benchmark (str "transform keys of a map (" (count data) " keys)") iterations
-                     (update-keys-naive  data inc)
                      (update-keys-red data inc)
                      (update-keys-rkv data inc)
                      (update-keys-rkv! data inc)
                      (update-keys-rkv2 data inc)
-                     (update-keys-trns data inc)))
+                     (update-keys-rkv2! data inc)))
     
     (let [data (->> (for [i (range size-sm)] [i i]) (into {}))]
       (run-benchmark (str "transform vals of a map (" (count data) " keys)") iterations
-                     (update-vals-naive  data inc)
                      (update-vals-rkv data inc)
                      (update-vals-rkv! data inc)
                      (update-vals-rkv2 data inc)
-                     (update-vals-red data inc)
-                     (update-vals-trns data inc)))
+                     (update-vals-rkv2! data inc)
+                     (update-vals-red data inc)))
 
     (let [data (->> (for [i (range size-md)] [i i]) (into {}))]
       (run-benchmark (str "transform keys of a map (" (count data) " keys)") (/ iterations size-sm)
-                     (update-keys-naive  data inc)
                      (update-keys-red data inc)
                      (update-keys-rkv data inc)
                      (update-keys-rkv! data inc)
                      (update-keys-rkv2 data inc)
-                     (update-keys-trns data inc)))
+                     (update-keys-rkv2! data inc)))
 
     (let [data (->> (for [i (range size-md)] [i i]) (into {}))]
       (run-benchmark (str "transform vals of a map (" (count data) " keys)") (/ iterations size-sm)
-                     (update-vals-naive  data inc)
                      (update-vals-red data inc)
                      (update-vals-rkv data inc)
                      (update-vals-rkv! data inc)
                      (update-vals-rkv2 data inc)
-                     (update-vals-trns data inc)))
+                     (update-vals-rkv2! data inc)))
 
     (let [data (->> (for [i (range size-lg)] [i i]) (into {}))]
       (run-benchmark (str "transform keys of a map (" (count data) " keys)") (/ iterations size-md)
-                     (update-keys-naive  data inc)
                      (update-keys-red data inc)
                      (update-keys-rkv data inc)
                      (update-keys-rkv! data inc)
                      (update-keys-rkv2 data inc)
-                     (update-keys-trns data inc)))
+                     (update-keys-rkv2! data inc)))
 
     (let [data (->> (for [i (range size-lg)] [i i]) (into {}))]
       (run-benchmark (str "transform vals of a map (" (count data) " keys)") (/ iterations size-md)
-                     (update-vals-naive  data inc)
                      (update-vals-red data inc)
                      (update-vals-rkv data inc)
                      (update-vals-rkv! data inc)
                      (update-vals-rkv2 data inc)
-                     (update-vals-trns data inc))))
+                     (update-vals-rkv2! data inc))))
   
-  (doseq [fun [update-keys-naive update-vals-naive update-keys-red update-vals-red update-keys-rkv update-keys-rkv!
-               update-vals-rkv update-vals-rkv! update-keys-rkv2 update-vals-rkv2 update-keys-trns update-vals-trns]
+  (doseq [fun [update-keys-naive update-vals-naive update-keys-red update-vals-red update-keys-rkv update-keys-rkv! update-keys-rkv2!
+               update-vals-rkv update-vals-rkv! update-keys-rkv2 update-vals-rkv2 update-keys-trns update-vals-trns update-vals-rkv2!]
           m    [(hash-map 0 1 2 3) (array-map 0 1 2 3) (sorted-map 2 3 0 1)
                 (clojure.data.priority-map/priority-map 0 1 2 3)
                 (clojure.data.int-map/int-map (int 0) (int 1) (int 2) (int 3))
