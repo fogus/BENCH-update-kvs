@@ -71,10 +71,13 @@
   "reduce-kv, builds [[k v]...] as input to into"
   {:added "1.11"}
   [m f]
-  (into (with-meta {} (meta m))
-        (reduce-kv (fn [acc k v] (conj acc [(f k) v]))
-                   []
-                   m)))
+  (let [ret (into (with-meta {} (meta m))
+                  (reduce-kv (fn [acc k v] (conj acc [(f k) v]))
+                             []
+                             m))]
+    (if (= (count m) (count ret))
+      ret
+      (throw (RuntimeException. "Key transform function did not return unique values.")))))
 
 (defn update-vals-rkv
   "reduce-kv calls out to update"

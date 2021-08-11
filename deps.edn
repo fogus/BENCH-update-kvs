@@ -8,6 +8,9 @@
  :aliases
  {
   :bench {:exec-fn bench-update-kvs.core/bench}
+  :test {:extra-paths ["test"]
+         :extra-deps {io.github.cognitect-labs/test-runner {:git/tag "v0.4.0" :git/sha "334f2e2"}}
+         :exec-fn cognitect.test-runner.api/test}
  }
 
  :mvn/repos {"central" {:url "https://repo1.maven.org/maven2/"}
