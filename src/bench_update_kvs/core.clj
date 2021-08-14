@@ -89,9 +89,21 @@
   (with-meta
     (persistent!
      (reduce-kv (fn [acc k v] (assoc! acc k (f v)))
-                (transient {})
+                (transient m)
                 m))
     (meta m)))
+
+(defn update-vals-rkv!reuse
+  "reduce-kv, assoc! to transient!"
+  {:added "1.11"}
+  [m f]
+  (with-meta
+    (persistent!
+     (reduce-kv (fn [acc k v] (assoc! acc k (f v)))
+                (transient m)
+                m))
+    (meta m)))
+
 
 ;;;
 
@@ -222,58 +234,88 @@
   [{:keys [iterations] :as opts :or {iterations 1000000}}]
   (println "  Clojure version " *clojure-version*)
 
-  (let [size-sm 10
-        size-md 100
-        size-lg 1000]
-    (let [data (->> (for [i (range size-sm)] [i i]) (into {}))]
+  (let [size-sm  10
+        size-md  100
+        size-lg  1000
+        size-xl  10000
+        size-xxl 100000]
+#_    (let [data (->> (for [i (range size-sm)] [i i]) (into {}))]
       (run-benchmark (str "transform keys of a map (" (count data) " keys)") iterations
-                     (update-keys-red data inc)
                      (update-keys-rkv data inc)
                      (update-keys-rkv! data inc)
                      (update-keys-rkv2 data inc)
                      (update-keys-rkv2! data inc)))
     
-    (let [data (->> (for [i (range size-sm)] [i i]) (into {}))]
+
+#_    (let [data (->> (for [i (range size-md)] [i i]) (into {}))]
+      (run-benchmark (str "transform keys of a map (" (count data) " keys)") (/ iterations size-sm)
+                     (update-keys-rkv data inc)
+                     (update-keys-rkv! data inc)
+                     (update-keys-rkv2 data inc)
+                     (update-keys-rkv2! data inc)))
+
+#_    (let [data (->> (for [i (range size-lg)] [i i]) (into {}))]
+      (run-benchmark (str "transform keys of a map (" (count data) " keys)") (/ iterations size-md)
+                     (update-keys-rkv data inc)
+                     (update-keys-rkv! data inc)
+                     (update-keys-rkv2 data inc)
+                     (update-keys-rkv2! data inc)))
+
+    (let [data (->> (for [i (range size-xl)] [i i]) (into {}))]
+      (run-benchmark (str "transform keys of a map (" (count data) " keys)") (/ iterations size-md)
+                     (update-keys-rkv data inc)
+                     (update-keys-rkv! data inc)
+                     (update-keys-rkv2 data inc)
+                     (update-keys-rkv2! data inc)))
+
+#_    (let [data (->> (for [i (range size-xxl)] [i i]) (into {}))]
+      (run-benchmark (str "transform keys of a map (" (count data) " keys)") (/ iterations size-md)
+                     (update-keys-rkv data inc)
+                     (update-keys-rkv! data inc)
+                     (update-keys-rkv2 data inc)
+                     (update-keys-rkv2! data inc)))
+
+#_    (let [data (->> (for [i (range size-sm)] [i i]) (into {}))]
       (run-benchmark (str "transform vals of a map (" (count data) " keys)") iterations
-                     (update-vals-rkv data inc)
                      (update-vals-rkv! data inc)
+                     (update-vals-rkv!reuse data inc)
                      (update-vals-rkv2 data inc)
                      (update-vals-rkv2! data inc)
                      (update-vals-red data inc)))
-
-    (let [data (->> (for [i (range size-md)] [i i]) (into {}))]
-      (run-benchmark (str "transform keys of a map (" (count data) " keys)") (/ iterations size-sm)
-                     (update-keys-red data inc)
-                     (update-keys-rkv data inc)
-                     (update-keys-rkv! data inc)
-                     (update-keys-rkv2 data inc)
-                     (update-keys-rkv2! data inc)))
-
-    (let [data (->> (for [i (range size-md)] [i i]) (into {}))]
+    
+#_    (let [data (->> (for [i (range size-md)] [i i]) (into {}))]
       (run-benchmark (str "transform vals of a map (" (count data) " keys)") (/ iterations size-sm)
-                     (update-vals-red data inc)
                      (update-vals-rkv data inc)
                      (update-vals-rkv! data inc)
+                     (update-vals-rkv!reuse data inc)
+                     (update-vals-rkv2 data inc)
+                     (update-vals-rkv2! data inc)))
+    
+#_    (let [data (->> (for [i (range size-lg)] [i i]) (into {}))]
+      (run-benchmark (str "transform vals of a map (" (count data) " keys)") (/ iterations size-md)
+                     (update-vals-rkv data inc)
+                     (update-vals-rkv! data inc)
+                     (update-vals-rkv!reuse data inc)
                      (update-vals-rkv2 data inc)
                      (update-vals-rkv2! data inc)))
 
-    (let [data (->> (for [i (range size-lg)] [i i]) (into {}))]
-      (run-benchmark (str "transform keys of a map (" (count data) " keys)") (/ iterations size-md)
-                     (update-keys-red data inc)
-                     (update-keys-rkv data inc)
-                     (update-keys-rkv! data inc)
-                     (update-keys-rkv2 data inc)
-                     (update-keys-rkv2! data inc)))
-
-    (let [data (->> (for [i (range size-lg)] [i i]) (into {}))]
+#_    (let [data (->> (for [i (range size-xl)] [i i]) (into {}))]
       (run-benchmark (str "transform vals of a map (" (count data) " keys)") (/ iterations size-md)
-                     (update-vals-red data inc)
                      (update-vals-rkv data inc)
                      (update-vals-rkv! data inc)
+                     (update-vals-rkv!reuse data inc)
+                     (update-vals-rkv2 data inc)
+                     (update-vals-rkv2! data inc)))
+
+#_    (let [data (->> (for [i (range size-xxl)] [i i]) (into {}))]
+      (run-benchmark (str "transform vals of a map (" (count data) " keys)") (/ iterations size-md)
+                     (update-vals-rkv data inc)
+                     (update-vals-rkv! data inc)
+                     (update-vals-rkv!reuse data inc)
                      (update-vals-rkv2 data inc)
                      (update-vals-rkv2! data inc))))
   
-  (doseq [fun [update-keys-naive update-vals-naive update-keys-red update-vals-red update-keys-rkv update-keys-rkv! update-keys-rkv2!
+#_  (doseq [fun [update-keys-naive update-vals-naive update-keys-red update-vals-red update-keys-rkv update-keys-rkv! update-keys-rkv2!
                update-vals-rkv update-vals-rkv! update-keys-rkv2 update-vals-rkv2 update-keys-trns update-vals-trns update-vals-rkv2!]
           m    [(hash-map 0 1 2 3) (array-map 0 1 2 3) (sorted-map 2 3 0 1)
                 (clojure.data.priority-map/priority-map 0 1 2 3)
