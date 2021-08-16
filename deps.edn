@@ -7,7 +7,8 @@
 
  :aliases
  {
-  :bench {:exec-fn bench-update-kvs.core/bench}
+  :bench    {:exec-fn bench-update-kvs.core/bench}
+  :dispatch {:exec-fn bench-update-kvs.disp/go}
   :test {:extra-paths ["test"]
          :extra-deps {io.github.cognitect-labs/test-runner {:git/tag "v0.4.0" :git/sha "334f2e2"}}
          :exec-fn cognitect.test-runner.api/test}

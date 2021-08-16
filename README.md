@@ -13,6 +13,12 @@ To bench against a local dev version, run:
     clj -Sdeps '{:deps {org.clojure/clojure {:mvn/version "1.11.0-master-SNAPSHOT"}}}' \
 	-X:bench [:iterations <loop iterations>]?
 
+To run the dispatch check:
+
+    JAVA_HOME=<path to jdk> clj -X:dispatch
+	# e.g. 
+	JAVA_HOME=/usr/local/opt/openjdk@8/ clj -X:dispatch
+
 ## License
 
 Copyright © 2021 Fogus
