@@ -3,6 +3,8 @@
             clojure.data.int-map
             clojure.data.avl))
 
+(set! *warn-on-reflection* true)
+
 (defn update-keys-naive
   "m f => {(f k) v ...}
 
@@ -107,7 +109,7 @@
 
 ;;;
 
-(set! *warn-on-reflection* true)
+(def slowpaths (atom 0))
 
 (defn reduce-kv2
   "Reduces an associative collection. f should be a function of 3
@@ -121,6 +123,14 @@
    (if (instance? clojure.lang.IKVReduce coll)
      (.kvreduce ^clojure.lang.IKVReduce coll f init)
      (clojure.core.protocols/kv-reduce coll f init))))
+
+(extend-protocol clojure.core.protocols/IKVReduce
+  ;;slow path default
+  clojure.lang.IPersistentMap
+  (kv-reduce
+    [amap f init]
+    (swap! slowpaths inc)
+    (reduce (fn [ret [k v]] (f ret k v)) init amap)))
 
 (defn update-keys-rkv2
   "reduce-kv2, assoc to {}"
@@ -183,6 +193,8 @@
 
 ;;; BENCH STUFF
 
+(def ^:dynamic *TIMES* 8)
+
 (defn pretty-float5 [anum]
   (format "%.5g" anum))
 
@@ -208,27 +220,27 @@
       (for [i (range (inc iters))]
         (time-ms amt-per-iter afn)))))
 
-(def ^:dynamic *TIMES* 8)
-
 (defn compare-benchmark [amt-per-iter afn-map]
   (let [results (update-vals-naive
                  afn-map
                  (fn [afn]
-                   (average-time-ms *TIMES* amt-per-iter afn)))
-        [[_ best-time] & _ :as sorted] (sort-by last results)
+                   (let [t  (average-time-ms *TIMES* amt-per-iter afn)
+                         sp @slowpaths]
+                     (reset! slowpaths 0)
+                     {:t  t
+                      :sp sp})))
+        [[_ {best-time :t}] & _ :as sorted] (into (array-map) (sort-by (comp :t last) results))
         ]
-    (println "\nAvg(ms)\t\tvs best\t\tCode")
-    (doseq [[k t] sorted]
-      (println (pretty-float5 t) "\t\t" (pretty-float3 (/ t best-time 1.0)) "\t\t" k)
-      )))
+    (println "\nAvg(ms)\t\tvs best\t\tSlowpaths\t\tCode")
+    (doseq [[k {:keys [t sp]}] sorted]
+      (println (pretty-float5 t) "\t\t" (pretty-float3 (/ t best-time 1.0)) "\t\t" sp "\t\t" k))))
 
 (defmacro run-benchmark [name amt-per-iter & exprs]
   (let [afn-map (->> exprs shuffle (map (fn [e] [`(quote ~e) `(fn [] ~e)])) (into {}))]
     `(do
        (println "Benchmark:" ~name (str "(" (* *TIMES* ~amt-per-iter) " iterations with " ~amt-per-iter " warmup)"))
        (compare-benchmark ~amt-per-iter ~afn-map)
-       (println "\n********************************\n")
-       )))
+       (println "\n********************************\n"))))
 
 (defn bench
   [{:keys [iterations] :as opts :or {iterations 1000000}}]
@@ -239,7 +251,7 @@
         size-lg  1000
         size-xl  10000
         size-xxl 100000]
-#_    (let [data (->> (for [i (range size-sm)] [i i]) (into {}))]
+    (let [data (->> (for [i (range size-sm)] [i i]) (into {}))]
       (run-benchmark (str "transform keys of a map (" (count data) " keys)") iterations
                      (update-keys-rkv data inc)
                      (update-keys-rkv! data inc)
@@ -247,14 +259,14 @@
                      (update-keys-rkv2! data inc)))
     
 
-#_    (let [data (->> (for [i (range size-md)] [i i]) (into {}))]
+    (let [data (->> (for [i (range size-md)] [i i]) (into {}))]
       (run-benchmark (str "transform keys of a map (" (count data) " keys)") (/ iterations size-sm)
                      (update-keys-rkv data inc)
                      (update-keys-rkv! data inc)
                      (update-keys-rkv2 data inc)
                      (update-keys-rkv2! data inc)))
 
-#_    (let [data (->> (for [i (range size-lg)] [i i]) (into {}))]
+    (let [data (->> (for [i (range size-lg)] [i i]) (into {}))]
       (run-benchmark (str "transform keys of a map (" (count data) " keys)") (/ iterations size-md)
                      (update-keys-rkv data inc)
                      (update-keys-rkv! data inc)
@@ -268,14 +280,14 @@
                      (update-keys-rkv2 data inc)
                      (update-keys-rkv2! data inc)))
 
-#_    (let [data (->> (for [i (range size-xxl)] [i i]) (into {}))]
+    (let [data (->> (for [i (range size-xxl)] [i i]) (into {}))]
       (run-benchmark (str "transform keys of a map (" (count data) " keys)") (/ iterations size-md)
                      (update-keys-rkv data inc)
                      (update-keys-rkv! data inc)
                      (update-keys-rkv2 data inc)
                      (update-keys-rkv2! data inc)))
 
-#_    (let [data (->> (for [i (range size-sm)] [i i]) (into {}))]
+    (let [data (->> (for [i (range size-sm)] [i i]) (into {}))]
       (run-benchmark (str "transform vals of a map (" (count data) " keys)") iterations
                      (update-vals-rkv! data inc)
                      (update-vals-rkv!reuse data inc)
@@ -283,7 +295,7 @@
                      (update-vals-rkv2! data inc)
                      (update-vals-red data inc)))
     
-#_    (let [data (->> (for [i (range size-md)] [i i]) (into {}))]
+    (let [data (->> (for [i (range size-md)] [i i]) (into {}))]
       (run-benchmark (str "transform vals of a map (" (count data) " keys)") (/ iterations size-sm)
                      (update-vals-rkv data inc)
                      (update-vals-rkv! data inc)
@@ -291,7 +303,7 @@
                      (update-vals-rkv2 data inc)
                      (update-vals-rkv2! data inc)))
     
-#_    (let [data (->> (for [i (range size-lg)] [i i]) (into {}))]
+    (let [data (->> (for [i (range size-lg)] [i i]) (into {}))]
       (run-benchmark (str "transform vals of a map (" (count data) " keys)") (/ iterations size-md)
                      (update-vals-rkv data inc)
                      (update-vals-rkv! data inc)
@@ -299,7 +311,7 @@
                      (update-vals-rkv2 data inc)
                      (update-vals-rkv2! data inc)))
 
-#_    (let [data (->> (for [i (range size-xl)] [i i]) (into {}))]
+    (let [data (->> (for [i (range size-xl)] [i i]) (into {}))]
       (run-benchmark (str "transform vals of a map (" (count data) " keys)") (/ iterations size-md)
                      (update-vals-rkv data inc)
                      (update-vals-rkv! data inc)
@@ -307,7 +319,7 @@
                      (update-vals-rkv2 data inc)
                      (update-vals-rkv2! data inc)))
 
-#_    (let [data (->> (for [i (range size-xxl)] [i i]) (into {}))]
+    (let [data (->> (for [i (range size-xxl)] [i i]) (into {}))]
       (run-benchmark (str "transform vals of a map (" (count data) " keys)") (/ iterations size-md)
                      (update-vals-rkv data inc)
                      (update-vals-rkv! data inc)
@@ -324,3 +336,14 @@
     (println "Checking type " (type m) " against " fun)
     (fun m inc)))
 
+(comment
+
+  (def res
+    '{(update-vals-rkv2 data inc)      {:t 0.004529874999999999, :sp 0},
+      (update-vals-rkv!reuse data inc) {:t 0.016189375, :sp 9},
+      (update-vals-rkv2! data inc)     {:t 0.008803124999999998, :sp 0},
+      (update-vals-red data inc)       {:t 0.00980325, :sp 0},
+      (update-vals-rkv! data inc)      {:t 0.011278625, :sp 9}})
+
+  (into (array-map) (sort-by (comp :t last) res))
+)
