@@ -106,7 +106,6 @@
                 m))
     (meta m)))
 
-
 ;;;
 
 (def slowpaths (atom 0))
@@ -190,6 +189,16 @@
         (map (fn [[k v]] [k (f v)]))
         m))
 
+(defn update-vals-rkv2!reuse
+  "reduce-kv, assoc! to transient!"
+  {:added "1.11"}
+  [m f]
+  (with-meta
+    (persistent!
+     (reduce-kv2 (fn [acc k v] (assoc! acc k (f v)))
+                 (transient m)
+                 m))
+    (meta m)))
 
 ;;; BENCH STUFF
 
@@ -251,7 +260,7 @@
         size-lg  1000
         size-xl  10000
         size-xxl 100000]
-    (let [data (->> (for [i (range size-sm)] [i i]) (into {}))]
+ #_   (let [data (->> (for [i (range size-sm)] [i i]) (into {}))]
       (run-benchmark (str "transform keys of a map (" (count data) " keys)") iterations
                      (update-keys-rkv data inc)
                      (update-keys-rkv! data inc)
@@ -259,28 +268,28 @@
                      (update-keys-rkv2! data inc)))
     
 
-    (let [data (->> (for [i (range size-md)] [i i]) (into {}))]
+#_    (let [data (->> (for [i (range size-md)] [i i]) (into {}))]
       (run-benchmark (str "transform keys of a map (" (count data) " keys)") (/ iterations size-sm)
                      (update-keys-rkv data inc)
                      (update-keys-rkv! data inc)
                      (update-keys-rkv2 data inc)
                      (update-keys-rkv2! data inc)))
 
-    (let [data (->> (for [i (range size-lg)] [i i]) (into {}))]
+#_    (let [data (->> (for [i (range size-lg)] [i i]) (into {}))]
       (run-benchmark (str "transform keys of a map (" (count data) " keys)") (/ iterations size-md)
                      (update-keys-rkv data inc)
                      (update-keys-rkv! data inc)
                      (update-keys-rkv2 data inc)
                      (update-keys-rkv2! data inc)))
 
-    (let [data (->> (for [i (range size-xl)] [i i]) (into {}))]
+#_    (let [data (->> (for [i (range size-xl)] [i i]) (into {}))]
       (run-benchmark (str "transform keys of a map (" (count data) " keys)") (/ iterations size-md)
                      (update-keys-rkv data inc)
                      (update-keys-rkv! data inc)
                      (update-keys-rkv2 data inc)
                      (update-keys-rkv2! data inc)))
 
-    (let [data (->> (for [i (range size-xxl)] [i i]) (into {}))]
+#_    (let [data (->> (for [i (range size-xxl)] [i i]) (into {}))]
       (run-benchmark (str "transform keys of a map (" (count data) " keys)") (/ iterations size-md)
                      (update-keys-rkv data inc)
                      (update-keys-rkv! data inc)
@@ -291,6 +300,7 @@
       (run-benchmark (str "transform vals of a map (" (count data) " keys)") iterations
                      (update-vals-rkv! data inc)
                      (update-vals-rkv!reuse data inc)
+                     (update-vals-rkv2!reuse data inc)
                      (update-vals-rkv2 data inc)
                      (update-vals-rkv2! data inc)
                      (update-vals-red data inc)))
@@ -300,6 +310,7 @@
                      (update-vals-rkv data inc)
                      (update-vals-rkv! data inc)
                      (update-vals-rkv!reuse data inc)
+                     (update-vals-rkv2!reuse data inc)
                      (update-vals-rkv2 data inc)
                      (update-vals-rkv2! data inc)))
     
@@ -308,6 +319,7 @@
                      (update-vals-rkv data inc)
                      (update-vals-rkv! data inc)
                      (update-vals-rkv!reuse data inc)
+                     (update-vals-rkv2!reuse data inc)
                      (update-vals-rkv2 data inc)
                      (update-vals-rkv2! data inc)))
 
@@ -316,6 +328,7 @@
                      (update-vals-rkv data inc)
                      (update-vals-rkv! data inc)
                      (update-vals-rkv!reuse data inc)
+                     (update-vals-rkv2!reuse data inc)
                      (update-vals-rkv2 data inc)
                      (update-vals-rkv2! data inc)))
 
@@ -324,6 +337,7 @@
                      (update-vals-rkv data inc)
                      (update-vals-rkv! data inc)
                      (update-vals-rkv!reuse data inc)
+                     (update-vals-rkv2!reuse data inc)
                      (update-vals-rkv2 data inc)
                      (update-vals-rkv2! data inc))))
   
