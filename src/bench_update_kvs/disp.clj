@@ -17,12 +17,32 @@
      (clojure.core.protocols/kv-reduce coll f init))))
 
 (extend-protocol clojure.core.protocols/IKVReduce
+  nil
+  (kv-reduce
+    [_ f init]
+    init)
+
   ;;slow path default
-  clojure.lang.IPersistentMap
+  java.lang.Object
   (kv-reduce
     [amap f init]
     (swap! b/slowpaths inc)
-    (reduce (fn [ret [k v]] (f ret k v)) init amap)))
+    (reduce (fn [ret [k v]] (f ret k v)) init amap))
+
+  clojure.lang.IPersistentMap
+  (kv-reduce
+    [amap f init]
+    (reduce (fn [ret ^java.util.Map$Entry me]
+              (f ret
+                 (.getKey me)
+                 (.getValue me)))
+            init
+            amap))
+  
+  clojure.lang.IKVReduce
+  (kv-reduce
+    [amap f init]
+    (.kvreduce amap f init)))
 
 (defn update-keys
   "m f => {(f k) v ...}
