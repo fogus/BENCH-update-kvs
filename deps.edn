@@ -9,7 +9,7 @@
  {
   :bench    {:exec-fn bench-update-kvs.core/bench}
   :cf-bench    {:exec-fn bench-update-kvs.context-free/bench}
-  :dispatch {:exec-fn bench-update-kvs.disp/go}
+  :dispatch {:exec-fn bench-update-kvs.disp/bench}
   :test {:extra-paths ["test"]
          :extra-deps {io.github.cognitect-labs/test-runner {:git/tag "v0.4.0" :git/sha "334f2e2"}}
          :exec-fn cognitect.test-runner.api/test}
