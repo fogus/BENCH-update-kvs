@@ -13,12 +13,6 @@
   java.lang.Object
   (kv-reduce
     [amap f init]
-    (swap! b/slowpaths inc)
-    (reduce (fn [ret [k v]] (f ret k v)) init amap))
-
-  clojure.lang.IPersistentMap
-  (kv-reduce
-    [amap f init]
     (reduce (fn [ret ^java.util.Map$Entry me]
               (f ret
                  (.getKey me)
@@ -75,11 +69,45 @@
         size-lg  1000
         size-xl  10000
         size-xxl 100000]
-    (let []
+    (let [data (->> (for [i (range size-sm)] [i i]) (into {}))]
       (b/run-benchmark "run update-keys" iterations
-                       (update-keys (data size-sm) inc)
-                       (update-keys (data size-md) inc))
+                       (update-keys data inc)))
 
+    (let [data (->> (for [i (range size-md)] [i i]) (into {}))]
+      (b/run-benchmark "run update-keys" (/ iterations size-sm)
+                       (update-keys data inc)))
+
+    (let [data (->> (for [i (range size-lg)] [i i]) (into {}))]
+      (b/run-benchmark (str "transform keys of a map (" (count data) " keys)") (/ iterations size-md)
+                       (update-keys data inc)))
+    
+    (let [data (->> (for [i (range size-xl)] [i i]) (into {}))]
+      (b/run-benchmark (str "transform keys of a map (" (count data) " keys)") (/ iterations size-md)
+                       (update-keys data inc)))
+
+    (let [data (->> (for [i (range size-xxl)] [i i]) (into {}))]
+      (b/run-benchmark (str "transform keys of a map (" (count data) " keys)") (/ iterations size-md)
+                     (update-keys data inc)))
+
+    ;; vals
+    (let [data (->> (for [i (range size-sm)] [i i]) (into {}))]
       (b/run-benchmark "run update-vals" iterations
-                       (update-vals (data size-sm) inc)
-                       (update-vals (data size-md) inc)))))
+                       (update-vals data inc)))
+
+    (let [data (->> (for [i (range size-md)] [i i]) (into {}))]
+      (b/run-benchmark "run update-vals" (/ iterations size-sm)
+                       (update-vals data inc)))
+
+    (let [data (->> (for [i (range size-lg)] [i i]) (into {}))]
+      (b/run-benchmark (str "transform vals of a map (" (count data) " keys)") (/ iterations size-md)
+                       (update-vals data inc)))
+    
+    (let [data (->> (for [i (range size-xl)] [i i]) (into {}))]
+      (b/run-benchmark (str "transform vals of a map (" (count data) " keys)") (/ iterations size-md)
+                       (update-vals data inc)))
+
+    (let [data (->> (for [i (range size-xxl)] [i i]) (into {}))]
+      (b/run-benchmark (str "transform vals of a map (" (count data) " keys)") (/ iterations size-md)
+                     (update-vals data inc)))
+
+    ))
