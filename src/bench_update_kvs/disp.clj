@@ -57,8 +57,10 @@
   (with-meta
     (persistent!
      (reduce-kv (fn [acc k v] (assoc! acc k (f v)))
-                 (transient m)
-                 m))
+                (if (instance? clojure.lang.IEditableCollection m)
+                  (transient m)
+                  (transient {}))
+                m))
     (meta m)))
 
 (defn data [sz]

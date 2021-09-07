@@ -17,8 +17,8 @@
 (deftest test-structs
   (doseq [fun [dispatch/update-keys dispatch/update-vals]
           m    [(hash-map 0 1 2 3) (array-map 0 1 2 3)
-                #_(sorted-map 2 3 0 1)
-                #_(clojure.data.priority-map/priority-map 0 1 2 3)
+                (sorted-map 2 3 0 1)
+                (clojure.data.priority-map/priority-map 0 1 2 3)
                 (clojure.data.int-map/int-map (int 0) (int 1) (int 2) (int 3))
                 (clojure.data.avl/sorted-map 0 1 2 3)]]
     (println "Checking type " (type m) " against " fun)
