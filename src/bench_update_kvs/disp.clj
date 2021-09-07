@@ -3,6 +3,8 @@
 
 (set! *warn-on-reflection* true)
 
+(def t (atom :unknown))
+
 (extend-protocol clojure.core.protocols/IKVReduce
   nil
   (kv-reduce
@@ -13,6 +15,9 @@
   java.lang.Object
   (kv-reduce
     [amap f init]
+    (swap! b/slowpaths inc)
+    (reset! t (type amap))
+    (print "+")
     (reduce (fn [ret ^java.util.Map$Entry me]
               (f ret
                  (.getKey me)
@@ -110,4 +115,5 @@
       (b/run-benchmark (str "transform vals of a map (" (count data) " keys)") (/ iterations size-md)
                      (update-vals data inc)))
 
+    (println ">>>>>>" @t)
     ))

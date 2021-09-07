@@ -123,7 +123,7 @@
      (.kvreduce ^clojure.lang.IKVReduce coll f init)
      (clojure.core.protocols/kv-reduce coll f init))))
 
-(extend-protocol clojure.core.protocols/IKVReduce
+#_(extend-protocol clojure.core.protocols/IKVReduce
   ;;slow path default
   clojure.lang.IPersistentMap
   (kv-reduce

@@ -1,21 +1,25 @@
 (ns bench-update-kvs.update-test
+  (:require clojure.data.priority-map
+            clojure.data.int-map
+            clojure.data.avl
+            [bench-update-kvs.disp :as dispatch])
   (:use clojure.test
         bench-update-kvs.core))
 
 (deftest test-update-kvs
-  (let [inm  (with-meta {:a 1 :b 2} {:has :meta})
-        kfns '[update-keys-naive update-keys-red update-keys-rkv update-keys-rkv! update-keys-trns]
-        vfns '[update-vals-naive update-vals-red update-vals-rkv update-vals-rkv! update-vals-trns]]
-    (doseq [uk kfns
-            uv vfns]
-      (let [update-keys (ns-resolve (find-ns 'bench-update-kvs.core) uk)
-            update-vals (ns-resolve (find-ns 'bench-update-kvs.core) uv)]
-        (are [result expr] (= result expr)
-          {"a" 1 "b" 2} (update-keys inm name)
-          {:has :meta}  (meta (update-keys inm name))
-          {:a 2 :b 3}   (update-vals inm inc)
-          {:has :meta}  (meta (update-vals inm inc)))
+  (let [inm  (with-meta {:a 1 :b 2} {:has :meta})]
+    (are [result expr] (= result expr)
+      {"a" 1 "b" 2} (dispatch/update-keys inm name)
+      {:has :meta}  (meta (dispatch/update-keys inm name))
+      {:a 2 :b 3}   (dispatch/update-vals inm inc)
+      {:has :meta}  (meta (dispatch/update-vals inm inc)))))
 
-        (println (str "Testing throws of " uk))
-        (is (thrown? RuntimeException (update-keys inm (constantly :a))))))))
-
+(deftest test-structs
+  (doseq [fun [dispatch/update-keys dispatch/update-vals]
+          m    [(hash-map 0 1 2 3) (array-map 0 1 2 3)
+                #_(sorted-map 2 3 0 1)
+                #_(clojure.data.priority-map/priority-map 0 1 2 3)
+                (clojure.data.int-map/int-map (int 0) (int 1) (int 2) (int 3))
+                (clojure.data.avl/sorted-map 0 1 2 3)]]
+    (println "Checking type " (type m) " against " fun)
+    (fun m inc)))
